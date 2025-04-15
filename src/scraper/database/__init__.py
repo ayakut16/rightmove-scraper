@@ -2,12 +2,12 @@
 Database module for content caching and storage
 """
 
-from .base import ContentDatabase
-from .sqlite import SQLiteContentDatabase
-from .postgres import PostgresContentDatabase
+from .base import Database
+from .sqlite import SQLiteDatabase
+from .postgres import PostgresDatabase
 
 __all__ = [
-    'ContentDatabase',
-    'SQLiteContentDatabase',
-    'PostgresContentDatabase'
+    'Database',
+    'SQLiteDatabase',
+    'PostgresDatabase'
 ]

@@ -7,8 +7,8 @@ from datetime import datetime, timedelta
 from typing import Optional, Dict, Any, Union
 
 from .http_client import HttpClient
-from .database.base import ContentDatabase
-from .database.sqlite import SQLiteContentDatabase
+from .database.base import Database
+from .database.sqlite import SQLiteDatabase
 from .utils.url import normalize_url
 
 
@@ -25,7 +25,7 @@ class Fetcher:
 
     def __init__(
         self,
-        db: Optional[ContentDatabase] = None,
+        db: Optional[Database] = None,
         http_client: Optional[HttpClient] = None,
         cache_ttl_hours: float = 6.0,
         db_path: str = 'content_cache.db'
@@ -34,13 +34,13 @@ class Fetcher:
         Initialize the fetcher.
 
         Args:
-            db: An instance of ContentDatabase. If None, a SQLiteContentDatabase will be created.
+            db: An instance of Database. If None, a SQLiteDatabase will be created.
             http_client: An instance of HttpClient. If None, a new one will be created.
             cache_ttl_hours: Time-to-live for cached content in hours.
             db_path: Path to the SQLite database file if a new db is created.
         """
         # Create or use the provided database
-        self.db = db if db is not None else SQLiteContentDatabase(db_path)
+        self.db = db if db is not None else SQLiteDatabase(db_path)
         self.db.initialize()
 
         # Create or use the provided HTTP client

@@ -11,7 +11,7 @@ from sqlalchemy import create_engine
 from .models import Base, CachedContent
 
 
-class ContentDatabase(ABC):
+class Database(ABC):
     """
     Abstract base class defining the interface for content caching and storage.
     Uses SQLAlchemy for database operations.

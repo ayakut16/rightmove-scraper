@@ -5,10 +5,10 @@ SQLite implementation of the content database using SQLAlchemy
 import os
 from sqlalchemy import create_engine
 
-from .base import ContentDatabase
+from .base import Database
 
 
-class SQLiteContentDatabase(ContentDatabase):
+class SQLiteDatabase(Database):
     """SQLite implementation of the content database"""
 
     def __init__(self, db_path: str = 'content_cache.db'):

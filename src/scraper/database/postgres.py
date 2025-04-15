@@ -4,10 +4,10 @@ PostgreSQL implementation of the content database using SQLAlchemy
 
 from sqlalchemy import create_engine
 
-from .base import ContentDatabase
+from .base import Database
 
 
-class PostgresContentDatabase(ContentDatabase):
+class PostgresDatabase(Database):
     """PostgreSQL implementation of the content database"""
 
     def __init__(self, connection_string: str):
