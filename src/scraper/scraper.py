@@ -19,22 +19,22 @@ class RightmoveScraper:
         """Runs the full scraping process."""
         print("Starting scraper...")
 
-        all_sitemap_urls = self._fetch_sitemap_index()
+        all_sitemap_urls = self._fetch_all_pages()
         if not all_sitemap_urls:
             return []
 
-        relevant_sitemaps = self._get_relevant_sitemaps(all_sitemap_urls)
-        return self._process_sitemaps(relevant_sitemaps)
+        # relevant_sitemaps = self._get_relevant_sitemaps(all_sitemap_urls)
+        # return self._process_sitemaps(relevant_sitemaps)
 
-    def _fetch_sitemap_index(self):
+    def _fetch_all_pages(self):
         """Fetches and processes the main sitemap index."""
-        print("Step 1: Fetching sitemap index...")
-        all_sitemap_urls = self.sitemap_processor.get_sitemap_urls_from_index(SITEMAP_INDEX_URL)
-        if not all_sitemap_urls:
+        print("Step 1: Fetching all pages...")
+        all_page_urls = self.sitemap_processor.get_all_page_urls_recursively(SITEMAP_INDEX_URL)
+        if not all_page_urls:
             print("Failed to fetch or parse sitemap index. Exiting.")
             return None
-        print(f"Found {len(all_sitemap_urls)} total sitemaps listed in index.")
-        return all_sitemap_urls
+        print(f"Found {len(all_page_urls)} total pages.")
+        return all_page_urls
 
     def _get_relevant_sitemaps(self, all_sitemap_urls):
         """Filters sitemaps to find relevant ones."""

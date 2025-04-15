@@ -6,6 +6,7 @@ requires-python = ">=3.8"
 dependencies = [
     "requests",
     "beautifulsoup4",
+    "sqlalchemy>=2.0.0",
 ]
 
 [build-system]
