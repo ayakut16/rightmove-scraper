@@ -1,0 +1,19 @@
+[project]
+name = "rightmove-scraper"
+version = "0.1.0"
+description = "A scraper for Rightmove property listings."
+requires-python = ">=3.8"
+dependencies = [
+    "requests",
+    "beautifulsoup4",
+]
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"] # Look for packages in src
+
+[tool.setuptools]
+package-dir = {"" = "src"} # Package is in src
