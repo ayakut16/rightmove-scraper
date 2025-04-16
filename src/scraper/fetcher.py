@@ -58,7 +58,6 @@ class Fetcher:
 
         # Check if we need to fetch or can use cache
         content = None
-        from_cache = False
 
         if not force_refresh:
             # Check cache first
@@ -73,12 +72,9 @@ class Fetcher:
                 # If cache is fresh enough, use it
                 if now - fetched_at < self.cache_ttl:
                     content = cached_data['content']
-                    from_cache = True
-                    print(f"Using cached content for {url} (cached {now - fetched_at} ago)")
 
         # If not using cache, fetch from network
         if content is None:
-            print(f"Fetching content from network for {url}")
             content = self.http_client.get(normalized_url, **kwargs)
 
             # If fetch was successful, save to cache

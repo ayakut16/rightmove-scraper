@@ -1,6 +1,7 @@
 import xml.etree.ElementTree as ET
 from io import StringIO
 from collections import deque # Added for queue
+from tqdm import tqdm
 
 from .fetcher import Fetcher
 
@@ -42,44 +43,58 @@ class SitemapProcessor:
                 locations.append(loc_element.text)
         return locations
 
-    def get_all_page_urls(self, start_url, filters=[""]):
+    def get_all_page_urls(self, sitemap_seed_url, filters=None):
         """
-        Recursively fetches and parses sitemaps starting from start_url,
+        Fetches and parses sitemaps starting from sitemap_seed_url,
         extracting all final page URLs (from <url> tags).
+        Shows progress with tqdm progress bars.
         """
         all_page_urls = set()
-        sitemap_queue = deque([start_url])
-        processed_sitemaps = set() # To avoid infinite loops
+        processed_sitemaps = set()  # To avoid infinite loops
 
-        while sitemap_queue:
-            current_sitemap_url = sitemap_queue.popleft()
-            if not any(filter in current_sitemap_url for filter in filters) and current_sitemap_url != start_url:
-                continue
-            if current_sitemap_url in processed_sitemaps:
-                continue
-            processed_sitemaps.add(current_sitemap_url)
+        # First, fetch and parse the root sitemap to get initial count
+        print(f"Fetching root sitemap: {sitemap_seed_url}")
+        root = self._fetch_and_parse_sitemap(sitemap_seed_url)
+        if root is None:
+            print(f"Error fetching root sitemap: {sitemap_seed_url}")
+            return list(all_page_urls)
 
-            print(f"Processing sitemap: {current_sitemap_url}")
-            root = self._fetch_and_parse_sitemap(current_sitemap_url)
-            if root is None:
-                print(f"  Skipping {current_sitemap_url} due to fetch/parse error.")
-                continue
+        # Get initial list of sitemaps
+        initial_sitemaps = self._get_locations_from_sitemap(root, 'sitemap')
+        if not initial_sitemaps:
+            # If no nested sitemaps, process the root sitemap as a regular sitemap
+            initial_sitemaps = [sitemap_seed_url]
 
-            # Check for nested sitemaps first (<sitemap>)
-            nested_sitemap_locs = self._get_locations_from_sitemap(root, 'sitemap')
-            if nested_sitemap_locs:
-                print(f"  Found {len(nested_sitemap_locs)} nested sitemaps in {current_sitemap_url}")
-                for loc in nested_sitemap_locs:
-                    if loc not in processed_sitemaps:
-                        sitemap_queue.append(loc)
+        # Create progress bar for processing sitemaps
+        with tqdm(total=len(initial_sitemaps), desc="Processing sitemaps") as pbar:
+            sitemap_queue = deque(initial_sitemaps)
 
-            # If no <sitemap> tags, it's likely a sitemap with <url> tags
-            page_url_locs = self._get_locations_from_sitemap(root, 'url')
-            if page_url_locs:
-                print(f"  Found {len(page_url_locs)} page URLs in {current_sitemap_url}")
+            while sitemap_queue:
+                current_sitemap_url = sitemap_queue.popleft()
+                if filters != None and not any(filter in current_sitemap_url for filter in filters)\
+                  or current_sitemap_url in processed_sitemaps:
+                    pbar.update(1)
+                    continue
+                processed_sitemaps.add(current_sitemap_url)
+
+                root = self._fetch_and_parse_sitemap(current_sitemap_url)
+                if root is None:
+                    pbar.write(f"  Skipping {current_sitemap_url} due to fetch/parse error.")
+                    pbar.update(1)
+                    continue
+
+                # Check for nested sitemaps first (<sitemap>)
+                nested_sitemap_locs = self._get_locations_from_sitemap(root, 'sitemap')
+                if nested_sitemap_locs:
+                    for loc in nested_sitemap_locs:
+                        if loc not in processed_sitemaps:
+                            sitemap_queue.append(loc)
+                            pbar.total += 1
+                            pbar.refresh()
+
+                # If no <sitemap> tags, it's likely a sitemap with <url> tags
+                page_url_locs = self._get_locations_from_sitemap(root, 'url')
                 all_page_urls.update(page_url_locs)
-            else:
-                # Could be an index pointing to other indexes, or empty
-                print(f"  No <sitemap> or <url> tags found in {current_sitemap_url}")
+                pbar.update(1)
 
         return list(all_page_urls)

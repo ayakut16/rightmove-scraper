@@ -13,7 +13,6 @@ class HttpClient:
 
     def get(self, url, delay=0.1):
         """Performs a GET request."""
-        print(f"Fetching {url}")
         try:
             response = requests.get(url, headers=self.headers, timeout=self.timeout)
             response.raise_for_status() # Check for HTTP errors

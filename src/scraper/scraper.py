@@ -7,40 +7,28 @@ SITEMAP_URL = "https://www.rightmove.co.uk/sitemap.xml"
 class RightmoveScraper:
     """Orchestrates the process of scraping Rightmove via sitemaps."""
 
-    def __init__(self, max_search_pages=5, max_properties=None):
+    def __init__(self):
         """Initializes the scraper components."""
         self.fetcher = Fetcher()
         self.sitemap_processor = SitemapProcessor()
         self.parser = SearchResultParser()
-        self.max_search_pages = max_search_pages # Limit requests
-        self.max_properties = max_properties # Limit total properties found
 
     def scrape(self):
         """Runs the full scraping process."""
         print("Starting scraper...")
 
         all_page_urls = self._fetch_all_pages_from_sitemap()
-        if not all_page_urls:
-            return []
-
-        # relevant_sitemaps = self._get_relevant_sitemaps(all_sitemap_urls)
-        # return self._process_sitemaps(relevant_sitemaps)
+        all_property_urls = [p for p in all_page_urls if "/properties/" in p]
+        # for url in all_property_urls:
+        #     properties = self._scrape_single_page(url)
+        #     print(properties)
 
     def _fetch_all_pages_from_sitemap(self):
         """Fetches and processes the main sitemap index."""
         print("Step 1: Fetching all pages from sitemap...")
         all_page_urls = self.sitemap_processor.get_all_page_urls(SITEMAP_URL)
-        if not all_page_urls:
-            print("Failed to fetch or parse sitemap index. Exiting.")
-            return None
         print(f"Found {len(all_page_urls)} total pages.")
         return all_page_urls
-
-    def _get_relevant_sitemaps(self, all_sitemap_urls):
-        """Filters sitemaps to find relevant ones."""
-        relevant_sitemaps = self.sitemap_processor.filter_relevant_sitemaps(all_sitemap_urls)
-        print(f"Found {len(relevant_sitemaps)} potentially relevant sitemaps (for sale/rent).")
-        return relevant_sitemaps
 
     def _process_sitemaps(self, relevant_sitemaps):
         """Processes each relevant sitemap and extracts property data."""
@@ -65,64 +53,6 @@ class RightmoveScraper:
 
         self._print_final_results(pages_scraped_count, properties_found_count)
         return all_properties
-
-    def _should_stop_processing(self, pages_scraped_count, properties_found_count):
-        """Determines if scraping should stop based on limits."""
-        if pages_scraped_count >= self.max_search_pages:
-            print(f"Reached limit of {self.max_search_pages} search pages. Stopping sitemap processing.")
-            return True
-        if self.max_properties is not None and properties_found_count >= self.max_properties:
-            print(f"Reached limit of {self.max_properties} properties. Stopping sitemap processing.")
-            return True
-        return False
-
-    def _process_single_sitemap(self, sitemap_url, pages_scraped_count, properties_found_count):
-        """Processes a single sitemap and returns extracted properties and counts."""
-        page_urls = self._get_search_page_urls(sitemap_url)
-        if not page_urls:
-            return [], 0, 0
-
-        remaining_pages = self.max_search_pages - pages_scraped_count
-        urls_to_scrape = page_urls[:remaining_pages]
-
-        if not urls_to_scrape:
-            return [], 0, 0
-
-        print(f"  Attempting to scrape up to {len(urls_to_scrape)} pages from this sitemap (respecting limits)...")
-        return self._scrape_search_pages(urls_to_scrape, properties_found_count)
-
-    def _get_search_page_urls(self, sitemap_url):
-        """Extracts and filters search page URLs from a sitemap."""
-        page_urls_in_sitemap = self.sitemap_processor.get_page_urls_from_sitemap(sitemap_url)
-        if not page_urls_in_sitemap:
-            print(f"  No page URLs found or error processing sitemap: {sitemap_url}")
-            return []
-
-        search_page_urls = self.sitemap_processor.filter_search_page_urls(page_urls_in_sitemap)
-        print(f"  Found {len(search_page_urls)} potential search page URLs in {sitemap_url}")
-        return search_page_urls
-
-    def _scrape_search_pages(self, urls_to_scrape, properties_found_count):
-        """Scrapes individual search pages and extracts properties."""
-        all_properties = []
-        pages_scraped = 0
-        props_found = 0
-
-        for page_url in urls_to_scrape:
-            if self._should_stop_processing(pages_scraped, properties_found_count + props_found):
-                break
-
-            properties = self._scrape_single_page(page_url)
-            if properties:
-                properties_to_add = self._adjust_properties_for_limit(
-                    properties,
-                    properties_found_count + props_found
-                )
-                all_properties.extend(properties_to_add)
-                props_found += len(properties_to_add)
-            pages_scraped += 1
-
-        return all_properties, pages_scraped, props_found
 
     def _scrape_single_page(self, page_url):
         """Scrapes a single search page and returns extracted properties."""
