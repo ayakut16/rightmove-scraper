@@ -1,5 +1,6 @@
 import random
 from tqdm import tqdm
+import asyncio
 
 from .fetcher import Fetcher
 from .sitemap import SitemapProcessor
@@ -21,8 +22,6 @@ class RightmoveScraper:
 
         all_page_urls = await self._fetch_all_pages_from_sitemap()
         all_property_urls = [p for p in all_page_urls if "/properties/" in p]
-        random.shuffle(all_property_urls)
-        all_property_urls = all_property_urls[:10]
         await self._scrape_all_properties(all_property_urls)
 
     async def _fetch_all_pages_from_sitemap(self):
@@ -35,10 +34,15 @@ class RightmoveScraper:
     async def _scrape_all_properties(self, all_property_urls):
         print(f"Scraping {len(all_property_urls)} properties...")
 
+        chunk_size = 100
         with tqdm(total=len(all_property_urls), desc="Fetching properties") as pbar:
-          for url in all_property_urls:
-            await self.fetcher.fetch_property(url)
-            pbar.update(1)
+            for i in range(0, len(all_property_urls), chunk_size):
+                chunk = all_property_urls[i:i + chunk_size]
+                # Process each chunk concurrently
+                await asyncio.gather(
+                    *[self.fetcher.fetch_property(url) for url in chunk]
+                )
+                pbar.update(len(chunk))
 
     async def _scrape_single_property_page(self, property_url):
         property = await self.fetcher.fetch_property(property_url)
