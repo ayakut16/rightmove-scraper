@@ -34,14 +34,11 @@ class RightmoveScraper:
     async def _scrape_all_properties(self, all_property_urls):
         print(f"Scraping {len(all_property_urls)} properties...")
 
-        chunk_size = 100
+        chunk_size = 250
         with tqdm(total=len(all_property_urls), desc="Fetching properties") as pbar:
             for i in range(0, len(all_property_urls), chunk_size):
                 chunk = all_property_urls[i:i + chunk_size]
-                # Process each chunk concurrently
-                await asyncio.gather(
-                    *[self.fetcher.fetch_property(url) for url in chunk]
-                )
+                await self.fetcher.fetch_and_save_properties(chunk)
                 pbar.update(len(chunk))
 
     async def _scrape_single_property_page(self, property_url):

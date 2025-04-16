@@ -5,8 +5,10 @@ Fetcher class providing a layer on top of HTTP client with caching capabilities
 import asyncio
 import re
 import os
+import time
+import random
 from datetime import datetime, timedelta, timezone
-from typing import Optional, Dict, Any, Union
+from typing import Optional, Dict, Any, Union, List
 import dotenv
 
 from scraper.http_client import HttpClient
@@ -40,6 +42,9 @@ class Fetcher:
         self.db = PostgresDatabase(postgres_url) if postgres_url else SQLiteDatabase()
         self.db.initialize()
 
+        self.sqlite_db = SQLiteDatabase()
+        self.sqlite_db.initialize()
+
         # Create or use the provided HTTP client
         self.http_client = HttpClient()
 
@@ -70,6 +75,12 @@ class Fetcher:
         if not force_refresh:
             # Check cache first
             cached_data = self.db.get_content(normalized_url)
+            if not cached_data:
+                cached_data = self.sqlite_db.get_content(normalized_url)
+                if cached_data:
+                    # Extract just the content string when copying from SQLite to Postgres
+                    self.db.save_content(normalized_url, cached_data['content'])
+
             if cached_data:
                 fetched_at = cached_data['fetched_at']
                 # Make fetched_at timezone-aware if it isn't already
@@ -80,7 +91,6 @@ class Fetcher:
                 # If cache is fresh enough, use it
                 if now - fetched_at < self.cache_ttl:
                     content = cached_data['content']
-
         # If not using cache, fetch from network
         if content is None:
             # Properly await the async get method
@@ -92,35 +102,82 @@ class Fetcher:
 
         return content
 
-    async def fetch_property(self, url: str, force_refresh: bool = False, **kwargs) -> Optional[str]:
+    async def fetch_and_save_properties(self, urls: List[str], **kwargs) -> Dict[str, Any]:
         """
-        Fetch content from a URL, using cache if available and recent.
-        """
-        # fetch the numbers after /properties/ with regex
-        normalized_url = normalize_url(url)
-        property_id = re.search(r'/properties/(\d+)', url).group(1)
-        property = None
+        Fetch multiple properties, using cache if available and recent.
+        Only fetches from network for properties that are not in cache or are expired.
 
-        if not force_refresh:
-            # Check cache first
-            saved_property = self.db.get_property(property_id)
-            if saved_property:
-                fetched_at = saved_property['fetched_at']
-                # Make fetched_at timezone-aware if it isn't already
+        Args:
+            urls: List of property URLs to fetch
+            **kwargs: Additional arguments to pass to the HTTP client's get method
+
+        Returns:
+            Dictionary mapping property IDs to their data
+        """
+        # Normalize URLs and extract property IDs
+        normalized_urls = [normalize_url(url) for url in urls]
+        property_rightmove_ids = [re.search(r'/properties/(\d+)', url).group(1) for url in normalized_urls]
+
+        # Create URL to ID mapping for later use
+        url_to_rightmove_id = dict(zip(normalized_urls, property_rightmove_ids))
+
+        # Get all properties from cache
+        cached_properties = self.db.get_properties(property_rightmove_ids)
+        result = {}
+        urls_to_fetch = []
+
+        now = datetime.now(timezone.utc)
+
+        # Check which properties need to be fetched
+        for url, rightmove_id in url_to_rightmove_id.items():
+            cached_prop = cached_properties.get(rightmove_id)
+
+            if cached_prop:
+                fetched_at = cached_prop['fetched_at']
                 if fetched_at.tzinfo is None:
                     fetched_at = fetched_at.replace(tzinfo=timezone.utc)
-                now = datetime.now(timezone.utc)
 
-                # If cache is fresh enough, use it
+                # Use cache if fresh enough
                 if now - fetched_at < self.cache_ttl:
-                    property = saved_property['data']
+                    result[rightmove_id] = cached_prop['data']
+                    continue
 
-        if property is None:
-            property_html = await self.http_client.get(normalized_url, **kwargs)
-            property_data = self.parser.parse(property_html)
-            self.db.save_property(property_id, property_data)
+            urls_to_fetch.append(url)
 
-        return property
+        # Fetch missing or expired properties
+        if urls_to_fetch:
+            async def fetch_single_property(url: str) -> tuple[str, Optional[dict], Optional[dict]]:
+                rightmove_id = url_to_rightmove_id[url]
+                try:
+                    property_html = await self.http_client.get(url, **kwargs)
+                    if property_html:
+                        property_data = self.parser.parse(property_html)
+                        return rightmove_id, property_data
+                    return rightmove_id, None
+                except Exception as e:
+                    print(f"Error fetching property {rightmove_id}: {str(e)}")
+                    return rightmove_id, None
+
+            # Fetch all properties in parallel and collect results
+            fetch_results = await asyncio.gather(
+                *(fetch_single_property(url) for url in urls_to_fetch)
+            )
+
+            # Update result dictionary and collect properties to save
+            properties_to_save = []
+            for rightmove_id, property_data in fetch_results:
+                if property_data is not None:
+                    result[rightmove_id] = property_data
+                    properties_to_save.append({
+                        'rightmove_id': rightmove_id,
+                        'data': property_data
+                    })
+
+            # Batch save all fetched properties
+            if properties_to_save:
+                self.db.save_properties(properties_to_save)
+
+        return result
 
     async def close(self):
         """Close database connections and perform cleanup"""

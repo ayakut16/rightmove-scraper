@@ -3,8 +3,8 @@ Abstract base class for content database implementations using SQLAlchemy
 """
 
 from abc import ABC, abstractmethod
-from datetime import datetime
-from typing import Optional, Dict, Any
+from datetime import datetime, timezone
+from typing import Optional, Dict, Any, List
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy import create_engine
 
@@ -75,6 +75,17 @@ class Database(ABC):
         property = session.query(Property).filter_by(rightmove_id=rightmove_id).first()
         return property.to_dict() if property else None
 
+    def get_properties(self, rightmove_ids: List[str]) -> Dict[str, Optional[Dict[str, Any]]]:
+        """
+        Retrieve properties for a given list of Rightmove IDs from the database. Returns None for IDs not present.
+        """
+        session = self.get_session()
+        properties = session.query(Property).filter(Property.rightmove_id.in_(rightmove_ids)).all()
+        result = {rightmove_id: None for rightmove_id in rightmove_ids}
+        for property in properties:
+            result[property.rightmove_id] = property.to_dict()
+        return result
+
     def save_property(self, rightmove_id: int, property_data: Dict[str, Any]) -> None:
         """
         Save or update property for a given Rightmove ID in the database.
@@ -83,11 +94,48 @@ class Database(ABC):
         property = session.query(Property).filter_by(rightmove_id=rightmove_id).first()
         if property:
             property.data = property_data
-            property.fetched_at = datetime.utcnow()
+            property.fetched_at = datetime.now(timezone.utc)
         else:
             property = Property(rightmove_id=rightmove_id, data=property_data)
             session.add(property)
 
+        session.commit()
+
+    def save_properties(self, properties: List[Dict[str, Any]]) -> None:
+        """
+        Bulk save or update properties for a given list of Rightmove IDs in the database.
+        Uses SQLAlchemy's bulk operations for better performance.
+        """
+        session = self.get_session()
+
+        # Get existing properties
+        rightmove_ids = [p['rightmove_id'] for p in properties]
+        existing_properties = {
+            p.rightmove_id: p for p in
+            session.query(Property).filter(Property.rightmove_id.in_(rightmove_ids))
+        }
+
+        # Prepare bulk updates and inserts
+        now = datetime.now(timezone.utc)
+        to_update = []
+        to_insert = []
+
+        for property_data in properties:
+            rightmove_id = property_data['rightmove_id']
+            if rightmove_id in existing_properties:
+                existing = existing_properties[rightmove_id]
+                existing.data = property_data['data']
+                existing.fetched_at = now
+                to_update.append(existing)
+            else:
+                to_insert.append(Property(
+                    rightmove_id=rightmove_id,
+                    data=property_data['data'],
+                    fetched_at=now
+                ))
+
+        if to_insert:
+            session.bulk_save_objects(to_insert)
         session.commit()
 
     def save_content(self, url: str, content: str) -> None:
@@ -106,7 +154,7 @@ class Database(ABC):
         if cached:
             # Update existing record
             cached.content = content
-            cached.fetched_at = datetime.utcnow()
+            cached.fetched_at = datetime.now(timezone.utc)
         else:
             # Create new record
             cached = CachedContent(url=url, content=content)
