@@ -24,7 +24,7 @@ class Database(ABC):
         self._session = None
 
     def _create_engine(self) -> None:
-        self.engine = create_engine(f"sqlite:///{self.db_path}")
+        self.engine = create_engine(self.connection_string)
 
     def initialize(self) -> None:
         """Create tables if they don't exist"""

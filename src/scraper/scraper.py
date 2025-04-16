@@ -1,16 +1,16 @@
-from .http_client import HttpClient
+from .fetcher import Fetcher
 from .sitemap import SitemapProcessor
 from .parser import SearchResultParser
 
-SITEMAP_INDEX_URL = "https://www.rightmove.co.uk/sitemap.xml"
+SITEMAP_URL = "https://www.rightmove.co.uk/sitemap.xml"
 
 class RightmoveScraper:
     """Orchestrates the process of scraping Rightmove via sitemaps."""
 
     def __init__(self, max_search_pages=5, max_properties=None):
         """Initializes the scraper components."""
-        self.client = HttpClient()
-        self.sitemap_processor = SitemapProcessor(self.client)
+        self.fetcher = Fetcher()
+        self.sitemap_processor = SitemapProcessor()
         self.parser = SearchResultParser()
         self.max_search_pages = max_search_pages # Limit requests
         self.max_properties = max_properties # Limit total properties found
@@ -19,17 +19,17 @@ class RightmoveScraper:
         """Runs the full scraping process."""
         print("Starting scraper...")
 
-        all_sitemap_urls = self._fetch_all_pages()
-        if not all_sitemap_urls:
+        all_page_urls = self._fetch_all_pages_from_sitemap()
+        if not all_page_urls:
             return []
 
         # relevant_sitemaps = self._get_relevant_sitemaps(all_sitemap_urls)
         # return self._process_sitemaps(relevant_sitemaps)
 
-    def _fetch_all_pages(self):
+    def _fetch_all_pages_from_sitemap(self):
         """Fetches and processes the main sitemap index."""
-        print("Step 1: Fetching all pages...")
-        all_page_urls = self.sitemap_processor.get_all_page_urls_recursively(SITEMAP_INDEX_URL)
+        print("Step 1: Fetching all pages from sitemap...")
+        all_page_urls = self.sitemap_processor.get_all_page_urls(SITEMAP_URL)
         if not all_page_urls:
             print("Failed to fetch or parse sitemap index. Exiting.")
             return None
@@ -126,7 +126,7 @@ class RightmoveScraper:
 
     def _scrape_single_page(self, page_url):
         """Scrapes a single search page and returns extracted properties."""
-        html = self.client.get(page_url, purpose="search page", delay=0.5)
+        html = self.fetcher.fetch(page_url)
         if not html:
             print(f"    Failed to fetch content for {page_url}")
             return []

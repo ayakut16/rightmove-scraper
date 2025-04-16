@@ -13,3 +13,6 @@ dist/
 .venv/
 venv/
 ENV/
+
+# SQLite database
+content_cache.db

@@ -2,12 +2,14 @@ import xml.etree.ElementTree as ET
 from io import StringIO
 from collections import deque # Added for queue
 
+from .fetcher import Fetcher
+
 class SitemapProcessor:
     """Handles fetching, parsing, and extracting URLs from sitemaps."""
 
-    def __init__(self, http_client):
-        """Initializes with an HttpClient instance."""
-        self.client = http_client
+    def __init__(self):
+        """Initializes with an Fetcher instance."""
+        self.fetcher = Fetcher()
 
     def _parse_xml_sitemap(self, xml_content):
         """Helper function to parse XML content, handling namespaces."""
@@ -26,8 +28,7 @@ class SitemapProcessor:
 
     def _fetch_and_parse_sitemap(self, url):
         """Fetches and parses a single sitemap (index or regular)."""
-        # Use a longer delay for sitemaps
-        xml_content = self.client.get(url, purpose="sitemap", delay=1.0)
+        xml_content = self.fetcher.fetch(url)
         return self._parse_xml_sitemap(xml_content)
 
     def _get_locations_from_sitemap(self, root, element_name):
@@ -41,7 +42,7 @@ class SitemapProcessor:
                 locations.append(loc_element.text)
         return locations
 
-    def get_all_page_urls_recursively(self, start_url, page_limit=10):
+    def get_all_page_urls(self, start_url, filters=[""]):
         """
         Recursively fetches and parses sitemaps starting from start_url,
         extracting all final page URLs (from <url> tags).
@@ -51,9 +52,8 @@ class SitemapProcessor:
         processed_sitemaps = set() # To avoid infinite loops
 
         while sitemap_queue:
-            print(f"Queue size: {len(sitemap_queue)}")
             current_sitemap_url = sitemap_queue.popleft()
-            if 'properties' not in current_sitemap_url and current_sitemap_url != start_url:
+            if not any(filter in current_sitemap_url for filter in filters) and current_sitemap_url != start_url:
                 continue
             if current_sitemap_url in processed_sitemaps:
                 continue

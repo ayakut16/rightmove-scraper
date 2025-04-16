@@ -11,16 +11,15 @@ class HttpClient:
         self.headers = base_headers if base_headers is not None else HEADERS
         self.timeout = default_timeout
 
-    def get(self, url, purpose="page", delay=0.5):
+    def get(self, url, delay=0.1):
         """Performs a GET request."""
-        print(f"Fetching {purpose}: {url}")
+        print(f"Fetching {url}")
         try:
             response = requests.get(url, headers=self.headers, timeout=self.timeout)
             response.raise_for_status() # Check for HTTP errors
             if delay > 0:
-                # print(f"Waiting for {delay} seconds...") # Optional: for debugging
                 time.sleep(delay)
             return response.text
         except requests.exceptions.RequestException as e:
-            print(f"Error fetching {purpose} {url}: {e}")
+            print(f"Error fetching {url}: {e}")
             return None

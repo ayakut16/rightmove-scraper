@@ -3,10 +3,10 @@ Fetcher class providing a layer on top of HTTP client with caching capabilities
 """
 
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any, Union
 
-from .http_client import HttpClient
+from scraper.http_client import HttpClient
 from .database.base import Database
 from .database.sqlite import SQLiteDatabase
 from .utils.url import normalize_url
@@ -23,28 +23,20 @@ class Fetcher:
     4. Stores new content in the database
     """
 
-    def __init__(
-        self,
-        db: Optional[Database] = None,
-        http_client: Optional[HttpClient] = None,
-        cache_ttl_hours: float = 6.0,
-        db_path: str = 'content_cache.db'
-    ):
+    def __init__(self, db: Optional[Database] = None, cache_ttl_hours: float = 6.0):
         """
         Initialize the fetcher.
 
         Args:
             db: An instance of Database. If None, a SQLiteDatabase will be created.
-            http_client: An instance of HttpClient. If None, a new one will be created.
             cache_ttl_hours: Time-to-live for cached content in hours.
-            db_path: Path to the SQLite database file if a new db is created.
         """
         # Create or use the provided database
-        self.db = db if db is not None else SQLiteDatabase(db_path)
+        self.db = db if db is not None else SQLiteDatabase()
         self.db.initialize()
 
         # Create or use the provided HTTP client
-        self.http_client = http_client if http_client is not None else HttpClient()
+        self.http_client = HttpClient()
 
         # Set cache TTL
         self.cache_ttl = timedelta(hours=cache_ttl_hours)
@@ -73,7 +65,10 @@ class Fetcher:
             cached_data = self.db.get_content(normalized_url)
             if cached_data:
                 fetched_at = cached_data['fetched_at']
-                now = datetime.utcnow()
+                # Make fetched_at timezone-aware if it isn't already
+                if fetched_at.tzinfo is None:
+                    fetched_at = fetched_at.replace(tzinfo=timezone.utc)
+                now = datetime.now(timezone.utc)
 
                 # If cache is fresh enough, use it
                 if now - fetched_at < self.cache_ttl:
