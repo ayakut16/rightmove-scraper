@@ -18,8 +18,6 @@ class PropertyPageParser:
             return None
 
         try:
-            with open("test.html", "w") as f:
-                f.write(html_content)
             selector = Selector(html_content)
             data = selector.xpath("//script[contains(.,'PAGE_MODEL = ')]/text()").get()
 

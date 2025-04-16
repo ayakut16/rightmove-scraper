@@ -3,7 +3,6 @@ Fetcher class providing a layer on top of HTTP client with caching capabilities
 """
 
 import asyncio
-import os
 import re
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any, Union
@@ -114,8 +113,8 @@ class Fetcher:
 
         if property is None:
             property_html = await self.http_client.get(normalized_url, **kwargs)
-            property = self.parser.parse(property_html)
-            self.db.save_property(property_id, property)
+            property_data = self.parser.parse(property_html)
+            self.db.save_property(property_id, property_data)
 
         return property
 

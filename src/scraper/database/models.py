@@ -49,7 +49,7 @@ class Property(Base):
     __tablename__ = 'property'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    rightmove_id = Column(Integer, nullable=False, unique=True, index=True)
+    rightmove_id = Column(String(255), nullable=False, unique=True, index=True)
     data = Column(JSON, nullable=False)
 
     fetched_at = Column(DateTime, nullable=False, default=datetime.utcnow)

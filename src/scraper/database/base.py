@@ -69,11 +69,11 @@ class Database(ABC):
 
     def get_property(self, rightmove_id: int) -> Optional[Dict[str, Any]]:
         """
-        Retrieve property for a given URL from the database.
+        Retrieve property for a given Rightmove ID from the database.
         """
         session = self.get_session()
-        cached = session.query(Property).filter_by(rightmove_id=rightmove_id).first()
-        return cached.to_dict() if cached else None
+        property = session.query(Property).filter_by(rightmove_id=rightmove_id).first()
+        return property.to_dict() if property else None
 
     def save_property(self, rightmove_id: int, property_data: Dict[str, Any]) -> None:
         """
@@ -81,12 +81,15 @@ class Database(ABC):
         """
         session = self.get_session()
         property = session.query(Property).filter_by(rightmove_id=rightmove_id).first()
-
+        print(f"Saving property: {property}")
+        print(f"rightmove_id: {rightmove_id}")
         if property:
             property.data = property_data
             property.fetched_at = datetime.utcnow()
         else:
             property = Property(rightmove_id=rightmove_id, data=property_data)
+            print(f"Saving property: {property}")
+            print(f"rightmove_id: {rightmove_id}")
             session.add(property)
 
         session.commit()
