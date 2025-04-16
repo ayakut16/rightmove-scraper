@@ -8,7 +8,7 @@ from typing import Optional, Dict, Any
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy import create_engine
 
-from .models import Base, CachedContent
+from .models import Base, CachedContent, Property
 
 
 class Database(ABC):
@@ -66,6 +66,30 @@ class Database(ABC):
         if cached:
             return cached.to_dict()
         return None
+
+    def get_property(self, rightmove_id: int) -> Optional[Dict[str, Any]]:
+        """
+        Retrieve property for a given URL from the database.
+        """
+        session = self.get_session()
+        cached = session.query(Property).filter_by(rightmove_id=rightmove_id).first()
+        return cached.to_dict() if cached else None
+
+    def save_property(self, rightmove_id: int, property_data: Dict[str, Any]) -> None:
+        """
+        Save or update property for a given Rightmove ID in the database.
+        """
+        session = self.get_session()
+        property = session.query(Property).filter_by(rightmove_id=rightmove_id).first()
+
+        if property:
+            property.data = property_data
+            property.fetched_at = datetime.utcnow()
+        else:
+            property = Property(rightmove_id=rightmove_id, data=property_data)
+            session.add(property)
+
+        session.commit()
 
     def save_content(self, url: str, content: str) -> None:
         """

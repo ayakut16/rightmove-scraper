@@ -27,9 +27,9 @@ class SitemapProcessor:
             print(f"Error parsing XML: {e}")
             return None
 
-    def _fetch_and_parse_sitemap(self, url):
+    async def _fetch_and_parse_sitemap(self, url):
         """Fetches and parses a single sitemap (index or regular)."""
-        xml_content = self.fetcher.fetch(url)
+        xml_content = await self.fetcher.fetch_sitemap(url)
         return self._parse_xml_sitemap(xml_content)
 
     def _get_locations_from_sitemap(self, root, element_name):
@@ -43,7 +43,7 @@ class SitemapProcessor:
                 locations.append(loc_element.text)
         return locations
 
-    def get_all_page_urls(self, sitemap_seed_url, filters=None):
+    async def get_all_page_urls(self, sitemap_seed_url, filters=None):
         """
         Fetches and parses sitemaps starting from sitemap_seed_url,
         extracting all final page URLs (from <url> tags).
@@ -54,7 +54,7 @@ class SitemapProcessor:
 
         # First, fetch and parse the root sitemap to get initial count
         print(f"Fetching root sitemap: {sitemap_seed_url}")
-        root = self._fetch_and_parse_sitemap(sitemap_seed_url)
+        root = await self._fetch_and_parse_sitemap(sitemap_seed_url)
         if root is None:
             print(f"Error fetching root sitemap: {sitemap_seed_url}")
             return list(all_page_urls)
@@ -77,7 +77,7 @@ class SitemapProcessor:
                     continue
                 processed_sitemaps.add(current_sitemap_url)
 
-                root = self._fetch_and_parse_sitemap(current_sitemap_url)
+                root = await self._fetch_and_parse_sitemap(current_sitemap_url)
                 if root is None:
                     pbar.write(f"  Skipping {current_sitemap_url} due to fetch/parse error.")
                     pbar.update(1)

@@ -2,7 +2,9 @@
 Fetcher class providing a layer on top of HTTP client with caching capabilities
 """
 
+import asyncio
 import os
+import re
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any, Union
 
@@ -10,7 +12,7 @@ from scraper.http_client import HttpClient
 from .database.base import Database
 from .database.sqlite import SQLiteDatabase
 from .utils.url import normalize_url
-
+from .parser import PropertyPageParser
 
 class Fetcher:
     """
@@ -41,7 +43,10 @@ class Fetcher:
         # Set cache TTL
         self.cache_ttl = timedelta(hours=cache_ttl_hours)
 
-    def fetch(self, url: str, force_refresh: bool = False, **kwargs) -> Optional[str]:
+        # Create or use the provided parser
+        self.parser = PropertyPageParser()
+
+    async def fetch_sitemap(self, url: str, force_refresh: bool = False, **kwargs) -> Optional[str]:
         """
         Fetch content from a URL, using cache if available and recent.
 
@@ -75,7 +80,8 @@ class Fetcher:
 
         # If not using cache, fetch from network
         if content is None:
-            content = self.http_client.get(normalized_url, **kwargs)
+            # Properly await the async get method
+            content = await self.http_client.get(normalized_url, **kwargs)
 
             # If fetch was successful, save to cache
             if content:
@@ -83,14 +89,54 @@ class Fetcher:
 
         return content
 
-    def close(self):
+    async def fetch_property(self, url: str, force_refresh: bool = False, **kwargs) -> Optional[str]:
+        """
+        Fetch content from a URL, using cache if available and recent.
+        """
+        # fetch the numbers after /properties/ with regex
+        normalized_url = normalize_url(url)
+        property_id = re.search(r'/properties/(\d+)', url).group(1)
+        property = None
+
+        if not force_refresh:
+            # Check cache first
+            saved_property = self.db.get_property(property_id)
+            if saved_property:
+                fetched_at = saved_property['fetched_at']
+                # Make fetched_at timezone-aware if it isn't already
+                if fetched_at.tzinfo is None:
+                    fetched_at = fetched_at.replace(tzinfo=timezone.utc)
+                now = datetime.now(timezone.utc)
+
+                # If cache is fresh enough, use it
+                if now - fetched_at < self.cache_ttl:
+                    property = saved_property['data']
+
+        if property is None:
+            property_html = await self.http_client.get(normalized_url, **kwargs)
+            property = self.parser.parse(property_html)
+            self.db.save_property(property_id, property)
+
+        return property
+
+    async def close(self):
         """Close database connections and perform cleanup"""
         self.db.close()
+        await self.http_client.close()
 
+    async def __aenter__(self):
+        """Support for async context manager usage"""
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        """Ensure database is closed when async context manager exits"""
+        await self.close()
+
+    # For backwards compatibility with non-async code
     def __enter__(self):
-        """Support for context manager usage"""
+        """Support for synchronous context manager usage (not recommended)"""
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        """Ensure database is closed when context manager exits"""
-        self.close()
+        """Ensure database is closed when synchronous context manager exits"""
+        asyncio.run(self.close())
