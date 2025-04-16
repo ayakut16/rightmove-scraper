@@ -4,12 +4,14 @@ Fetcher class providing a layer on top of HTTP client with caching capabilities
 
 import asyncio
 import re
+import os
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any, Union
+import dotenv
 
 from scraper.http_client import HttpClient
-from .database.base import Database
 from .database.sqlite import SQLiteDatabase
+from .database.postgres import PostgresDatabase
 from .utils.url import normalize_url
 from .parser import PropertyPageParser
 
@@ -24,7 +26,7 @@ class Fetcher:
     4. Stores new content in the database
     """
 
-    def __init__(self, db: Optional[Database] = None, cache_ttl_hours: float = 6.0):
+    def __init__(self, cache_ttl_hours: float = 6.0):
         """
         Initialize the fetcher.
 
@@ -32,8 +34,10 @@ class Fetcher:
             db: An instance of Database. If None, a SQLiteDatabase will be created.
             cache_ttl_hours: Time-to-live for cached content in hours.
         """
+        dotenv.load_dotenv()
+        postgres_url = os.getenv('POSTGRES_URL')
         # Create or use the provided database
-        self.db = db if db is not None else SQLiteDatabase()
+        self.db = PostgresDatabase(postgres_url) if postgres_url else SQLiteDatabase()
         self.db.initialize()
 
         # Create or use the provided HTTP client

@@ -16,3 +16,7 @@ ENV/
 
 # SQLite database
 content_cache.db
+
+# Environment variables
+.env
+.env.local
