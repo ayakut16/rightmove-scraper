@@ -81,15 +81,11 @@ class Database(ABC):
         """
         session = self.get_session()
         property = session.query(Property).filter_by(rightmove_id=rightmove_id).first()
-        print(f"Saving property: {property}")
-        print(f"rightmove_id: {rightmove_id}")
         if property:
             property.data = property_data
             property.fetched_at = datetime.utcnow()
         else:
             property = Property(rightmove_id=rightmove_id, data=property_data)
-            print(f"Saving property: {property}")
-            print(f"rightmove_id: {rightmove_id}")
             session.add(property)
 
         session.commit()

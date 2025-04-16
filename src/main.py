@@ -13,9 +13,7 @@ async def async_main():
     await scraper.scrape()
 
 def main():
-    print("Starting main function")
     asyncio.run(async_main())
-    print("Main function completed")
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()
