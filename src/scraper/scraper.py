@@ -1,3 +1,4 @@
+import re
 from tqdm import tqdm
 
 from .fetcher import Fetcher
@@ -20,8 +21,11 @@ class RightmoveScraper:
         print("Starting scraper...")
 
         all_page_urls = await self._fetch_all_pages_from_sitemap()
-        all_property_urls = [p for p in all_page_urls if "/properties/" in p]
-        await self._scrape_all_properties(all_property_urls)
+        all_property_urls_from_sitemap = [p for p in all_page_urls if "/properties/" in p]
+        all_property_ids_from_sitemap = [re.search(r'/properties/(\d+)', url).group(1) for url in all_property_urls_from_sitemap]
+        existing_property_ids = set(self.fetcher.get_existing_property_rightmove_ids())
+        new_property_ids = [id for id in all_property_ids_from_sitemap if id not in existing_property_ids]
+        await self._scrape_all_properties(new_property_ids)
         await self.fetcher.close()
 
     async def _fetch_all_pages_from_sitemap(self):
@@ -34,13 +38,13 @@ class RightmoveScraper:
         print(f"Found {len(all_page_urls)} total pages.")
         return all_page_urls
 
-    async def _scrape_all_properties(self, all_property_urls):
-        print(f"Scraping {len(all_property_urls)} properties...")
+    async def _scrape_all_properties(self, property_ids):
+        print(f"Scraping {len(property_ids)} properties...")
 
         chunk_size = 250
-        with tqdm(total=len(all_property_urls), desc="Fetching properties") as pbar:
-            for i in range(0, len(all_property_urls), chunk_size):
-                chunk = all_property_urls[i:i + chunk_size]
+        with tqdm(total=len(property_ids), desc="Fetching properties") as pbar:
+            for i in range(0, len(property_ids), chunk_size):
+                chunk = property_ids[i:i + chunk_size]
                 await self.fetcher.fetch_and_save_properties(chunk)
                 pbar.update(len(chunk))
 

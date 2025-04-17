@@ -62,7 +62,6 @@ class SitemapProcessor:
         # Create progress bar for processing sitemaps
         with tqdm(total=len(child_sitemaps), desc="Processing sitemaps") as pbar:
             for sitemap_url in child_sitemaps:
-                tqdm.write(f"Processing sitemap: {sitemap_url}")
                 sitemap_content = await self._fetch_and_parse_sitemap(sitemap_url)
                 page_url_locs = self._get_locations_from_sitemap(sitemap_content, 'url')
                 all_page_urls.update(page_url_locs)

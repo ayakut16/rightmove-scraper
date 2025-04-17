@@ -67,6 +67,17 @@ class Database(ABC):
             return cached.to_dict()
         return None
 
+    def get_all_property_rightmove_ids(self) -> List[int]:
+        """
+        Retrieve all property Rightmove IDs from the database.
+        Uses a targeted query to fetch only IDs for better performance.
+        """
+        session = self.get_session()
+        # Each row is a tuple with one element: (rightmove_id,)
+        rows = session.query(Property.rightmove_id).all()
+        # Extract the first element from each tuple
+        return [row[0] for row in rows]
+
     def get_property(self, rightmove_id: int) -> Optional[Dict[str, Any]]:
         """
         Retrieve property for a given Rightmove ID from the database.

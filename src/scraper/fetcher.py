@@ -54,6 +54,9 @@ class Fetcher:
         # Create or use the provided parser
         self.parser = PropertyPageParser()
 
+    def get_existing_property_rightmove_ids(self):
+        return self.db.get_all_property_rightmove_ids()
+
     async def fetch_sitemap(self, url: str, force_refresh: bool = False, **kwargs) -> Optional[str]:
         """
         Fetch content from a URL, using cache if available and recent.
@@ -102,7 +105,7 @@ class Fetcher:
 
         return content
 
-    async def fetch_and_save_properties(self, urls: List[str], **kwargs) -> Dict[str, Any]:
+    async def fetch_and_save_properties(self, rightmove_ids: List[int], **kwargs) -> Dict[str, Any]:
         """
         Fetch multiple properties, using cache if available and recent.
         Only fetches from network for properties that are not in cache or are expired.
@@ -114,15 +117,12 @@ class Fetcher:
         Returns:
             Dictionary mapping property IDs to their data
         """
-        # Normalize URLs and extract property IDs
-        normalized_urls = [normalize_url(url) for url in urls]
-        property_rightmove_ids = [re.search(r'/properties/(\d+)', url).group(1) for url in normalized_urls]
 
-        # Create URL to ID mapping for later use
-        url_to_rightmove_id = dict(zip(normalized_urls, property_rightmove_ids))
+        urls = [f"https://www.rightmove.co.uk/properties/{rightmove_id}" for rightmove_id in rightmove_ids]
+        url_to_rightmove_id = dict(zip(urls, rightmove_ids))
 
         # Get all properties from cache
-        cached_properties = self.db.get_properties(property_rightmove_ids)
+        persisted_properties = self.db.get_properties(rightmove_ids)
         result = {}
         urls_to_fetch = []
 
@@ -130,7 +130,7 @@ class Fetcher:
 
         # Check which properties need to be fetched
         for url, rightmove_id in url_to_rightmove_id.items():
-            cached_prop = cached_properties.get(rightmove_id)
+            cached_prop = persisted_properties.get(rightmove_id)
 
             if cached_prop:
                 fetched_at = cached_prop['fetched_at']
