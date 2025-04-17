@@ -87,7 +87,7 @@ class Database(ABC):
         # Each row is a tuple with one element: (rightmove_id,)
         rows = session.query(Property.rightmove_id) \
             .filter(Property.fetched_at < datetime.now(timezone.utc) - timedelta(hours=hours)) \
-            .limit(10000);
+            .order_by(Property.fetched_at.asc());
         return [row[0] for row in rows]
 
     def get_property(self, rightmove_id: int) -> Optional[Dict[str, Any]]:

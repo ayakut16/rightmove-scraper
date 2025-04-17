@@ -26,8 +26,7 @@ class RightmoveScraper:
         existing_property_ids = set(self.fetcher.get_existing_property_rightmove_ids())
         expired_property_ids = self.fetcher.get_expired_property_rightmove_ids()
         new_property_ids = [id for id in all_property_ids_from_sitemap if id not in existing_property_ids]
-        print(f"Scraping {len(new_property_ids)} new properties\
-              and {len(expired_property_ids)} expired properties...")
+        print(f"Scraping {len(new_property_ids)} new properties and {len(expired_property_ids)} expired properties...")
         await self._scrape_all_properties(new_property_ids + expired_property_ids)
         await self.fetcher.close()
 

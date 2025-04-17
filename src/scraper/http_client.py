@@ -1,6 +1,6 @@
 import asyncio
 import html
-from typing import Optional
+from typing import Optional, Any
 from httpx import AsyncClient, Response
 
 DEFAULT_HEADERS = {
@@ -20,20 +20,20 @@ class HttpClient:
             timeout=default_timeout,
         )
 
-    async def get(self, url: str, delay: float = 0.1) -> Optional[str]:
+    async def get(self, url: str, delay: float = 0.1) -> tuple[Optional[str], Any]:
         """Performs an async GET request."""
-        try:
-            if delay > 0:
-                await asyncio.sleep(delay)
+        if delay > 0:
+            await asyncio.sleep(delay)
 
-            response = await self.client.get(url)
+        response = await self.client.get(url)
 
-            # Only raise for 4xx and 5xx status codes
-            response.raise_for_status()
+        if response.status_code == 404 or response.status_code == 410:
+            return None, response.status_code
 
-            return response.text, response.status_code
-        except Exception as e:
-            return None, e.response.status_code
+        # Only raise for 4xx and 5xx status codes
+        response.raise_for_status()
+
+        return response.text, response.status_code
 
     async def close(self):
         """Close the async client."""

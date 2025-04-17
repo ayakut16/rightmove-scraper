@@ -3,10 +3,9 @@ Fetcher class providing a layer on top of HTTP client with caching capabilities
 """
 
 import asyncio
-import re
 import os
-import time
-import random
+import logging
+import traceback
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any, Union, List
 import dotenv
@@ -121,64 +120,41 @@ class Fetcher:
             Dictionary mapping property IDs to their data
         """
 
-        urls = [f"https://www.rightmove.co.uk/properties/{rightmove_id}" for rightmove_id in rightmove_ids]
-        url_to_rightmove_id = dict(zip(urls, rightmove_ids))
-
-        # Get all properties from cache
-        persisted_properties = self.db.get_properties(rightmove_ids)
-        result = {}
-        urls_to_fetch = []
-
-        now = datetime.now(timezone.utc)
-
-        # Check which properties need to be fetched
-        for url, rightmove_id in url_to_rightmove_id.items():
-            cached_prop = persisted_properties.get(rightmove_id)
-
-            if cached_prop:
-                fetched_at = cached_prop['fetched_at']
-                if fetched_at.tzinfo is None:
-                    fetched_at = fetched_at.replace(tzinfo=timezone.utc)
-
-                # Use cache if fresh enough
-                if now - fetched_at < self.cache_ttl:
-                    result[rightmove_id] = cached_prop['data']
-                    continue
-
-            urls_to_fetch.append(url)
-
+        urls_to_fetch = [f"https://www.rightmove.co.uk/properties/{rightmove_id}" for rightmove_id in rightmove_ids]
+        url_to_rightmove_id = dict(zip(urls_to_fetch, rightmove_ids))
         # Fetch missing or expired properties
-        if urls_to_fetch:
-            async def fetch_single_property(url: str) -> tuple[str, Optional[dict], Optional[dict]]:
-                rightmove_id = url_to_rightmove_id[url]
-                try:
-                    property_html, status_code = await self.http_client.get(url, **kwargs)
-                    if property_html:
-                        property_data = self.parser.parse(property_html)
-                        return rightmove_id, property_data
-                    elif status_code == 404 or status_code == 410:
-                        return rightmove_id, None
-                except Exception as e:
-                    print(f"Error fetching property {rightmove_id}: {str(e)}")
+        async def fetch_single_property(url: str) -> tuple[str, Optional[dict]]:
+            rightmove_id = url_to_rightmove_id[url]
+            try:
+                property_html, status_code = await self.http_client.get(url, **kwargs)
+                if status_code == 404 or status_code == 410:
                     return rightmove_id, None
+                property_data = self.parser.parse(property_html)
+                return rightmove_id, property_data
+            except Exception as e:
+                print(f"Error fetching property {rightmove_id}: {str(e)}")
+                print(traceback.format_exc())
+                return None, None
 
-            # Fetch all properties in parallel and collect results
-            fetch_results = await asyncio.gather(
-                *(fetch_single_property(url) for url in urls_to_fetch)
-            )
+        # Fetch all properties in parallel and collect results
+        fetch_results = await asyncio.gather(
+            *(fetch_single_property(url) for url in urls_to_fetch)
+        )
 
-            # Update result dictionary and collect properties to save
-            properties_to_save = []
-            for rightmove_id, property_data in fetch_results:
+        # Update result dictionary and collect properties to save
+        result = {}
+        properties_to_save = []
+        for rightmove_id, property_data in fetch_results:
+            if rightmove_id:
                 result[rightmove_id] = property_data
                 properties_to_save.append({
                     'rightmove_id': rightmove_id,
                     'data': property_data
                 })
 
-            # Batch save all fetched properties
-            if properties_to_save:
-                self.db.save_properties(properties_to_save)
+        # Batch save all fetched properties
+        if properties_to_save:
+            self.db.save_properties(properties_to_save)
 
         return result
 
