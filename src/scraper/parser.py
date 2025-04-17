@@ -1,6 +1,7 @@
 from parsel import Selector
 import json
-from typing import Optional
+from typing import Optional, List
+import re
 
 class PropertyPageParser:
     def parse(self, html_content: str) -> Optional[dict]:
@@ -44,3 +45,21 @@ class PropertyPageParser:
                 pos = match + index
             except ValueError:
                 pos = match + 1
+
+class SearchPageParser:
+
+    def parse(self, html_content: str) -> List[str]:
+        """
+        Parses search page information from the provided HTML content and returns a list of property IDs.
+
+        Args:
+            html_content: A string containing the HTML of the search page.
+
+        Returns:
+            A list of property IDs.
+        """
+        if not html_content:
+            return []
+        selector = Selector(html_content)
+        property_ids = selector.xpath("//a[contains(@href, '/properties/')]/@href").getall()
+        return [re.search(r'/properties/(\d+)', url).group(1) for url in property_ids]

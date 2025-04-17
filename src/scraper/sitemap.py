@@ -28,9 +28,9 @@ class SitemapProcessor:
             print(f"Error parsing XML: {e}")
             return None
 
-    async def   _fetch_and_parse_sitemap(self, url):
+    async def _fetch_and_parse_sitemap(self, url):
         """Fetches and parses a single sitemap (index or regular)."""
-        xml_content = await self.fetcher.fetch_sitemap(url)
+        xml_content = await self.fetcher.fetch_webpage(url)
         return self._parse_xml_sitemap(xml_content)
 
     def _get_locations_from_sitemap(self, root, element_name):
@@ -70,4 +70,6 @@ class SitemapProcessor:
         return list(all_page_urls)
 
     def _sitemap_contains_outcode(self, sitemap_url, outcode):
-        return re.search(fr'/sitemap-properties-{outcode}\d*\.xml$', sitemap_url) is not None
+        properties =  re.search(fr'/sitemap-properties-{outcode}\d*\.xml$', sitemap_url) is not None
+        oucodes =     re.search(fr'/sitemap-outcodes-{outcode}\d*\.xml$', sitemap_url) is not None
+        return properties or oucodes

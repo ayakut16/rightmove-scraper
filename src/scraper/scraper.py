@@ -1,9 +1,10 @@
 import re
+import asyncio
 from tqdm import tqdm
 
 from .fetcher import Fetcher
 from .sitemap import SitemapProcessor
-from .parser import PropertyPageParser
+from .parser import SearchPageParser
 from .constants import LONDON_OUTCODES
 SITEMAP_URL = "https://www.rightmove.co.uk/sitemap.xml"
 
@@ -15,20 +16,47 @@ class RightmoveScraper:
         self.fetcher = Fetcher()
         self.sitemap_processor = SitemapProcessor()
         self.london_only = london_only
-
+        self.search_page_parser = SearchPageParser()
     async def scrape(self):
         """Runs the full scraping process."""
         print("Starting scraper...")
 
-        all_page_urls = await self._fetch_all_pages_from_sitemap()
-        all_property_urls_from_sitemap = [p for p in all_page_urls if "/properties/" in p]
-        all_property_ids_from_sitemap = [re.search(r'/properties/(\d+)', url).group(1) for url in all_property_urls_from_sitemap]
+        page_urls = await self._fetch_all_pages_from_sitemap()
+        property_ids_from_sitemap = self._get_property_ids_from_sitemap(page_urls)
         existing_property_ids = set(self.fetcher.get_existing_property_rightmove_ids())
         expired_property_ids = self.fetcher.get_expired_property_rightmove_ids()
-        new_property_ids = [id for id in all_property_ids_from_sitemap if id not in existing_property_ids]
-        print(f"Scraping {len(new_property_ids)} new properties and {len(expired_property_ids)} expired properties...")
-        await self._scrape_all_properties(new_property_ids + expired_property_ids)
+        new_property_ids = [id for id in property_ids_from_sitemap if id not in existing_property_ids]
+        property_ids_from_search_pages = await self._get_property_ids_from_search_pages(page_urls)
+        print(f"""
+               Scraping
+                {len(new_property_ids)} new properties
+                {len(expired_property_ids)} expired properties
+                Total properties to scrape: {len(new_property_ids) + len(expired_property_ids)}
+               """)
+
+        await self._scrape_all_properties(new_property_ids + expired_property_ids + property_ids_from_search_pages)
         await self.fetcher.close()
+
+    def _get_property_ids_from_sitemap(self, page_urls):
+        property_urls = [p for p in page_urls if "/properties/" in p]
+        return [re.search(r'/properties/(\d+)', url).group(1) for url in property_urls]
+
+    async def _get_property_ids_from_search_pages(self, page_urls):
+        search_page_urls = [p for p in page_urls if "/property-for-sale/" in p or "/property-to-rent/" in p]
+        print(f"Found {len(search_page_urls)} search pages to scrape")
+        chunk_size = 80
+        search_page_htmls = []
+        with tqdm(total=len(search_page_urls), desc="Fetching search pages") as pbar:
+            for i in range(0, len(search_page_urls), chunk_size):
+                chunk = search_page_urls[i:i + chunk_size]
+                search_page_htmls.extend(await asyncio.gather(*[self.fetcher.fetch_webpage(url) for url in chunk]))
+                pbar.update(len(chunk))
+        property_ids = []
+        with tqdm(total=len(search_page_htmls), desc="Parsing search pages") as pbar:
+            for html in search_page_htmls:
+                property_ids.extend(self.search_page_parser.parse(html))
+                pbar.update(1)
+        return property_ids
 
     async def _fetch_all_pages_from_sitemap(self):
         """Fetches and processes the main sitemap index."""
@@ -43,7 +71,7 @@ class RightmoveScraper:
     async def _scrape_all_properties(self, property_ids):
         print(f"Scraping {len(property_ids)} properties...")
 
-        chunk_size = 250
+        chunk_size = 80
         with tqdm(total=len(property_ids), desc="Fetching properties") as pbar:
             for i in range(0, len(property_ids), chunk_size):
                 chunk = property_ids[i:i + chunk_size]

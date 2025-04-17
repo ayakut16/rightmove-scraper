@@ -59,7 +59,7 @@ class Fetcher:
     def get_expired_property_rightmove_ids(self, hours: int = 6):
         return self.db.get_expired_property_rightmove_ids(hours)
 
-    async def fetch_sitemap(self, url: str, force_refresh: bool = False, **kwargs) -> Optional[str]:
+    async def fetch_webpage(self, url: str, force_refresh: bool = False, **kwargs) -> Optional[str]:
         """
         Fetch content from a URL, using cache if available and recent.
 
@@ -73,7 +73,6 @@ class Fetcher:
         """
         # Normalize the URL for consistent caching
         normalized_url = normalize_url(url)
-
         # Check if we need to fetch or can use cache
         content = None
 
