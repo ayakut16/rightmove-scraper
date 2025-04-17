@@ -24,8 +24,11 @@ class RightmoveScraper:
         all_property_urls_from_sitemap = [p for p in all_page_urls if "/properties/" in p]
         all_property_ids_from_sitemap = [re.search(r'/properties/(\d+)', url).group(1) for url in all_property_urls_from_sitemap]
         existing_property_ids = set(self.fetcher.get_existing_property_rightmove_ids())
+        expired_property_ids = self.fetcher.get_expired_property_rightmove_ids()
         new_property_ids = [id for id in all_property_ids_from_sitemap if id not in existing_property_ids]
-        await self._scrape_all_properties(new_property_ids)
+        print(f"Scraping {len(new_property_ids)} new properties\
+              and {len(expired_property_ids)} expired properties...")
+        await self._scrape_all_properties(new_property_ids + expired_property_ids)
         await self.fetcher.close()
 
     async def _fetch_all_pages_from_sitemap(self):

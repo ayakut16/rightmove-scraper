@@ -57,6 +57,9 @@ class Fetcher:
     def get_existing_property_rightmove_ids(self):
         return self.db.get_all_property_rightmove_ids()
 
+    def get_expired_property_rightmove_ids(self, hours: int = 6):
+        return self.db.get_expired_property_rightmove_ids(hours)
+
     async def fetch_sitemap(self, url: str, force_refresh: bool = False, **kwargs) -> Optional[str]:
         """
         Fetch content from a URL, using cache if available and recent.

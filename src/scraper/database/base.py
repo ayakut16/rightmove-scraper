@@ -3,7 +3,7 @@ Abstract base class for content database implementations using SQLAlchemy
 """
 
 from abc import ABC, abstractmethod
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Optional, Dict, Any, List
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy import create_engine
@@ -76,6 +76,18 @@ class Database(ABC):
         # Each row is a tuple with one element: (rightmove_id,)
         rows = session.query(Property.rightmove_id).all()
         # Extract the first element from each tuple
+        return [row[0] for row in rows]
+
+    def get_expired_property_rightmove_ids(self, hours: int = 6) -> List[int]:
+        """
+        Retrieve all expired property Rightmove IDs from the database.
+        Uses a targeted query to fetch only IDs for better performance.
+        """
+        session = self.get_session()
+        # Each row is a tuple with one element: (rightmove_id,)
+        rows = session.query(Property.rightmove_id) \
+            .filter(Property.fetched_at < datetime.now(timezone.utc) - timedelta(hours=hours)) \
+            .limit(10000);
         return [row[0] for row in rows]
 
     def get_property(self, rightmove_id: int) -> Optional[Dict[str, Any]]:
