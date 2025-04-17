@@ -9,7 +9,8 @@ from scraper.scraper import RightmoveScraper
 # --- Main Execution Logic ---
 
 async def async_main():
-    scraper = RightmoveScraper()
+    args = [arg.lower() for arg in sys.argv[1:]]
+    scraper = RightmoveScraper(london_only=('--london' in args))
     await scraper.scrape()
 
 def main():
