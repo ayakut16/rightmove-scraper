@@ -31,7 +31,7 @@ class HttpClient:
             # Only raise for 4xx and 5xx status codes
             response.raise_for_status()
 
-            return response.text
+            return response.text, response.status_code
         except Exception as e:
             return None, e.response.status_code
 

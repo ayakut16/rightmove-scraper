@@ -2,7 +2,7 @@
 SQLAlchemy models for content storage
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy import Column, String, Text, DateTime, Integer, Index, JSON
 from sqlalchemy.ext.declarative import declarative_base
 
@@ -23,8 +23,9 @@ class CachedContent(Base):
     content = Column(Text, nullable=False)
 
     # Timestamps for tracking
-    fetched_at = Column(DateTime, nullable=False, default=datetime.utcnow)
-    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=datetime.now(timezone.utc))
+    fetched_at = Column(DateTime, nullable=False, default=datetime.now(timezone.utc))
+    updated_at = Column(DateTime, nullable=False, default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc))
 
     # Create an explicit index on the URL column
     __table_args__ = (
@@ -41,7 +42,8 @@ class CachedContent(Base):
             'url': self.url,
             'content': self.content,
             'fetched_at': self.fetched_at,
-            'updated_at': self.updated_at
+            'updated_at': self.updated_at,
+            'created_at': self.created_at
         }
 
 class Property(Base):
@@ -52,8 +54,9 @@ class Property(Base):
     rightmove_id = Column(String(255), nullable=False, unique=True, index=True)
     data = Column(JSON, nullable=False)
 
-    fetched_at = Column(DateTime, nullable=False, default=datetime.utcnow)
-    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=datetime.now(timezone.utc))
+    fetched_at = Column(DateTime, nullable=False, default=datetime.now(timezone.utc))
+    updated_at = Column(DateTime, nullable=False, default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc))
 
     __table_args__ = (
         Index('idx_rightmove_id', 'rightmove_id'),
@@ -69,5 +72,6 @@ class Property(Base):
             'rightmove_id': self.rightmove_id,
             'data': self.data,
             'fetched_at': self.fetched_at,
-            'updated_at': self.updated_at
+            'updated_at': self.updated_at,
+            'created_at': self.created_at
         }

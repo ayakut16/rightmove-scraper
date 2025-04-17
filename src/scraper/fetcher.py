@@ -97,7 +97,7 @@ class Fetcher:
         # If not using cache, fetch from network
         if content is None:
             # Properly await the async get method
-            content, status_code = await self.http_client.get(normalized_url, **kwargs)
+            content, _ = await self.http_client.get(normalized_url, **kwargs)
 
             # If fetch was successful, save to cache
             if content:
