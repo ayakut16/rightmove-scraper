@@ -10,7 +10,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any, Union, List
 import dotenv
 
-from scraper.http_client import HttpClient
+from .http_client import HttpClient
 from .database.sqlite import SQLiteDatabase
 from .database.postgres import PostgresDatabase
 from .utils.url import normalize_url
@@ -27,7 +27,7 @@ class Fetcher:
     4. Stores new content in the database
     """
 
-    def __init__(self, cache_ttl_hours: float = 6.0):
+    def __init__(self, cache_ttl_hours: float = 1.0):
         """
         Initialize the fetcher.
 

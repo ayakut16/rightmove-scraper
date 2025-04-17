@@ -23,18 +23,25 @@ class RightmoveScraper:
 
         page_urls = await self._fetch_all_pages_from_sitemap()
         property_ids_from_sitemap = self._get_property_ids_from_sitemap(page_urls)
+        property_ids_from_search_pages = await self._get_property_ids_from_search_pages(page_urls)
+
         existing_property_ids = set(self.fetcher.get_existing_property_rightmove_ids())
         expired_property_ids = self.fetcher.get_expired_property_rightmove_ids()
-        new_property_ids = [id for id in property_ids_from_sitemap if id not in existing_property_ids]
-        property_ids_from_search_pages = await self._get_property_ids_from_search_pages(page_urls)
+
+        new_property_ids_from_sitemap = [id for id in property_ids_from_sitemap if id not in existing_property_ids]
+        new_property_ids_from_search_pages = [id for id in property_ids_from_search_pages if id not in existing_property_ids]
+
+        all_property_ids = list(set(new_property_ids_from_sitemap + new_property_ids_from_search_pages + expired_property_ids))
+
         print(f"""
                Scraping
-                {len(new_property_ids)} new properties
+                {len(new_property_ids_from_sitemap)} new properties from sitemap
+                {len(new_property_ids_from_search_pages)} new properties from search pages
                 {len(expired_property_ids)} expired properties
-                Total properties to scrape: {len(new_property_ids) + len(expired_property_ids)}
+                Total properties to scrape: {len(all_property_ids)}
                """)
 
-        await self._scrape_all_properties(new_property_ids + expired_property_ids + property_ids_from_search_pages)
+        await self._scrape_all_properties(all_property_ids)
         await self.fetcher.close()
 
     def _get_property_ids_from_sitemap(self, page_urls):
@@ -45,18 +52,17 @@ class RightmoveScraper:
         search_page_urls = [p for p in page_urls if "/property-for-sale/" in p or "/property-to-rent/" in p]
         print(f"Found {len(search_page_urls)} search pages to scrape")
         chunk_size = 80
-        search_page_htmls = []
+        property_ids = []
+
         with tqdm(total=len(search_page_urls), desc="Fetching search pages") as pbar:
             for i in range(0, len(search_page_urls), chunk_size):
                 chunk = search_page_urls[i:i + chunk_size]
-                search_page_htmls.extend(await asyncio.gather(*[self.fetcher.fetch_webpage(url) for url in chunk]))
+                htmls = await asyncio.gather(*[self.fetcher.fetch_webpage(url) for url in chunk])
+                for html in htmls:
+                    property_ids.extend(self.search_page_parser.parse(html))
                 pbar.update(len(chunk))
-        property_ids = []
-        with tqdm(total=len(search_page_htmls), desc="Parsing search pages") as pbar:
-            for html in search_page_htmls:
-                property_ids.extend(self.search_page_parser.parse(html))
-                pbar.update(1)
-        return property_ids
+
+        return list(set(property_ids))
 
     async def _fetch_all_pages_from_sitemap(self):
         """Fetches and processes the main sitemap index."""
