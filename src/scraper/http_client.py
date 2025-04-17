@@ -21,7 +21,7 @@ class HttpClient:
             timeout=default_timeout,
         )
 
-    async def get(self, url: str, delay: float = 0.1, max_retries: int = 3) -> tuple[Optional[str], Any]:
+    async def get(self, url: str, delay: float = 0.1, max_retries: int = 5) -> tuple[Optional[str], Any]:
         """Performs an async GET request with retries."""
         for attempt in range(max_retries):
             try:

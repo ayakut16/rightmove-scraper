@@ -132,8 +132,7 @@ class Fetcher:
                 property_data = self.parser.parse(property_html)
                 return rightmove_id, property_data
             except Exception as e:
-                print(f"Error fetching property {rightmove_id}: {str(e)}")
-                print(traceback.format_exc())
+                # print(f"Error fetching property {rightmove_id}: {str(e)}")
                 return None, None
 
         # Fetch all properties in parallel and collect results

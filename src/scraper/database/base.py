@@ -125,7 +125,6 @@ class Database(ABC):
 
         # Prepare bulk updates and inserts
         now = datetime.now(timezone.utc)
-        to_update = []
         to_insert = []
 
         for property_data in properties:
@@ -134,7 +133,6 @@ class Database(ABC):
                 existing = existing_properties[rightmove_id]
                 existing.data = property_data['data']
                 existing.fetched_at = now
-                to_update.append(existing)
             else:
                 to_insert.append(Property(
                     rightmove_id=rightmove_id,
