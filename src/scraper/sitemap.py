@@ -10,7 +10,7 @@ class SitemapProcessor:
 
     def __init__(self):
         """Initializes with an Fetcher instance."""
-        self.fetcher = Fetcher()
+        self.fetcher = Fetcher(cache_ttl_hours=1.0)
 
     def _parse_xml_sitemap(self, xml_content):
         """Helper function to parse XML content, handling namespaces."""

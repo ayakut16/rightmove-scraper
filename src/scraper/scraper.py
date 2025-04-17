@@ -1,6 +1,4 @@
-import random
 from tqdm import tqdm
-import asyncio
 
 from .fetcher import Fetcher
 from .sitemap import SitemapProcessor
@@ -23,6 +21,7 @@ class RightmoveScraper:
         all_page_urls = await self._fetch_all_pages_from_sitemap()
         all_property_urls = [p for p in all_page_urls if "/properties/" in p]
         await self._scrape_all_properties(all_property_urls)
+        await self.fetcher.close()
 
     async def _fetch_all_pages_from_sitemap(self):
         """Fetches and processes the main sitemap index."""
