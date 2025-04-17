@@ -41,9 +41,6 @@ class Fetcher:
         self.db = PostgresDatabase(postgres_url) if postgres_url else SQLiteDatabase()
         self.db.initialize()
 
-        self.sqlite_db = SQLiteDatabase()
-        self.sqlite_db.initialize()
-
         # Create or use the provided HTTP client
         self.http_client = HttpClient()
 
@@ -79,11 +76,6 @@ class Fetcher:
         if not force_refresh:
             # Check cache first
             cached_data = self.db.get_content(normalized_url)
-            if not cached_data:
-                cached_data = self.sqlite_db.get_content(normalized_url)
-                if cached_data:
-                    # Extract just the content string when copying from SQLite to Postgres
-                    self.db.save_content(normalized_url, cached_data['content'])
 
             if cached_data:
                 fetched_at = cached_data['fetched_at']
