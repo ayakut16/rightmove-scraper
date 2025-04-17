@@ -33,13 +33,11 @@ class RightmoveScraper:
 
         all_property_ids = list(set(new_property_ids_from_sitemap + new_property_ids_from_search_pages + expired_property_ids))
 
-        print(f"""
-               Scraping
-                {len(new_property_ids_from_sitemap)} new properties from sitemap
-                {len(new_property_ids_from_search_pages)} new properties from search pages
-                {len(expired_property_ids)} expired properties
-                Total properties to scrape: {len(all_property_ids)}
-               """)
+        print(f"""Scraping
+  {len(new_property_ids_from_sitemap)} new properties from sitemap
+  {len(new_property_ids_from_search_pages)} new properties from search pages
+  {len(expired_property_ids)} expired properties
+  Total properties to scrape: {len(all_property_ids)}""")
 
         await self._scrape_all_properties(all_property_ids)
         await self.fetcher.close()
