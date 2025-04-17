@@ -97,21 +97,6 @@ class Database(ABC):
             result[property.rightmove_id] = property.to_dict()
         return result
 
-    def save_property(self, rightmove_id: int, property_data: Dict[str, Any]) -> None:
-        """
-        Save or update property for a given Rightmove ID in the database.
-        """
-        session = self.get_session()
-        property = session.query(Property).filter_by(rightmove_id=rightmove_id).first()
-        if property:
-            property.data = property_data
-            property.fetched_at = datetime.now(timezone.utc)
-        else:
-            property = Property(rightmove_id=rightmove_id, data=property_data)
-            session.add(property)
-
-        session.commit()
-
     def save_properties(self, properties: List[Dict[str, Any]]) -> None:
         """
         Bulk save or update properties for a given list of Rightmove IDs in the database.
