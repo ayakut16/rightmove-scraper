@@ -33,7 +33,7 @@ class HttpClient:
 
             return response.text
         except Exception as e:
-            return None
+            return None, e.response.status_code
 
     async def close(self):
         """Close the async client."""

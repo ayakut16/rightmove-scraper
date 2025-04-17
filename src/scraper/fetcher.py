@@ -97,7 +97,7 @@ class Fetcher:
         # If not using cache, fetch from network
         if content is None:
             # Properly await the async get method
-            content = await self.http_client.get(normalized_url, **kwargs)
+            content, status_code = await self.http_client.get(normalized_url, **kwargs)
 
             # If fetch was successful, save to cache
             if content:
@@ -149,11 +149,12 @@ class Fetcher:
             async def fetch_single_property(url: str) -> tuple[str, Optional[dict], Optional[dict]]:
                 rightmove_id = url_to_rightmove_id[url]
                 try:
-                    property_html = await self.http_client.get(url, **kwargs)
+                    property_html, status_code = await self.http_client.get(url, **kwargs)
                     if property_html:
                         property_data = self.parser.parse(property_html)
                         return rightmove_id, property_data
-                    return rightmove_id, None
+                    elif status_code == 404 or status_code == 410:
+                        return rightmove_id, None
                 except Exception as e:
                     print(f"Error fetching property {rightmove_id}: {str(e)}")
                     return rightmove_id, None
@@ -166,12 +167,11 @@ class Fetcher:
             # Update result dictionary and collect properties to save
             properties_to_save = []
             for rightmove_id, property_data in fetch_results:
-                if property_data is not None:
-                    result[rightmove_id] = property_data
-                    properties_to_save.append({
-                        'rightmove_id': rightmove_id,
-                        'data': property_data
-                    })
+                result[rightmove_id] = property_data
+                properties_to_save.append({
+                    'rightmove_id': rightmove_id,
+                    'data': property_data
+                })
 
             # Batch save all fetched properties
             if properties_to_save:
